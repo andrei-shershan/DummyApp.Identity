@@ -1,0 +1,23 @@
+name: CI - Build Identity
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore NuGet packages
+        run: dotnet restore src/DummyApp.Identity/DummyApp.Identity.csproj
+
+      - name: Build Identity project
+        run: dotnet build src/DummyApp.Identity/DummyApp.Identity.csproj --configuration Release --no-restore
