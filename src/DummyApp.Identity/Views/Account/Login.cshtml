@@ -1,0 +1,47 @@
+@model DummyApp.Identity.Models.LoginViewModel
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign in</title>
+    <style>
+        body { font-family:Segoe UI,Arial,Helvetica,sans-serif; padding:2rem; }
+        .form { max-width:360px; margin:0 auto; }
+        label { display:block; margin-top:0.5rem; }
+        input[type=text], input[type=password] { width:100%; padding:0.5rem; margin-top:0.25rem; }
+        .error { color:#a00; }
+        button { margin-top:1rem; padding:0.5rem 1rem; }
+    </style>
+</head>
+<body>
+    <div class="form">
+        <h2>Sign in</h2>
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="error">Please fix the errors below.</div>
+        }
+        <form method="post" asp-action="Login">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+
+            <label asp-for="Email">Email</label>
+            <input asp-for="Email" />
+            <span class="error" asp-validation-for="Email"></span>
+
+            <label asp-for="Password">Password</label>
+            <input asp-for="Password" type="password" />
+            <span class="error" asp-validation-for="Password"></span>
+
+            <button type="submit">Sign in</button>
+        </form>
+        <p>
+            <a href="/">Back to home</a>
+        </p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js"></script>
+</body>
+</html>

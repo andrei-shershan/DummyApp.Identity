@@ -1,6 +1,0 @@
-@DummyApp.Identity_HostAddress = http://localhost:5093
-
-GET {{DummyApp.Identity_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
