@@ -51,7 +51,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.Name = "bff.cookie";
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // Allow HTTP in dev
     options.LoginPath = "/account/login";
 });
 
@@ -71,25 +71,42 @@ builder.Services.AddOpenIddict()
         // Authorization and token endpoints
         options.SetAuthorizationEndpointUris("/connect/authorize");
         options.SetTokenEndpointUris("/connect/token");
+        options.SetEndSessionEndpointUris("/connect/logout");
+        options.SetIssuer(new Uri("http://identity.dummy.localhost"));
 
         // Authorization Code flow with PKCE (recommended for SPAs)
         options.AllowAuthorizationCodeFlow()
                .RequireProofKeyForCodeExchange();
 
+        // Client Credentials flow for backend-to-backend
+        options.AllowClientCredentialsFlow();
+
         // Refresh tokens
         options.AllowRefreshTokenFlow();
 
         // Register the scopes
-        options.RegisterScopes(OpenIddictConstants.Scopes.Email, OpenIddictConstants.Scopes.Profile, OpenIddictConstants.Scopes.OfflineAccess, OpenIddictConstants.Scopes.OpenId);
+        options.RegisterScopes(
+            OpenIddictConstants.Scopes.Email,
+            OpenIddictConstants.Scopes.Profile,
+            OpenIddictConstants.Scopes.OfflineAccess,
+            OpenIddictConstants.Scopes.OpenId,
+            "storage.read",
+            "storage.write");
 
-        // Development encryption/signing keys (replace in production)
-        options.AddDevelopmentEncryptionCertificate()
-               .AddDevelopmentSigningCertificate();
+        // JWT access tokens are the default in this OpenIddict version.
+        // UseReferenceAccessTokens() would be needed for opaque reference tokens.
+
+        // Register an encryption key for OpenIddict itself, but do not encrypt access tokens.
+        options.AddEphemeralEncryptionKey();
+        options.AddDevelopmentSigningCertificate();
+        options.DisableAccessTokenEncryption();
 
         // Register the ASP.NET Core host and enable endpoint passthrough to allow custom controller handling
         options.UseAspNetCore()
                .EnableAuthorizationEndpointPassthrough()
-               .EnableTokenEndpointPassthrough();
+               .EnableTokenEndpointPassthrough()
+               .EnableEndSessionEndpointPassthrough()
+               .DisableTransportSecurityRequirement(); // TODO: Remove in production
     })
     .AddValidation(options =>
     {
@@ -114,32 +131,81 @@ using (var scope = app.Services.CreateScope())
     var existing = manager.FindByClientIdAsync(clientId).GetAwaiter().GetResult();
     if (existing == null)
     {
-        var secret = Guid.NewGuid().ToString("N");
+        // Hardcoded secret for dev. Matches BFF appsettings.json "ClientSecret": "secret".
         var descriptor = new OpenIddict.Abstractions.OpenIddictApplicationDescriptor
         {
             ClientId = clientId,
-            ClientSecret = secret,
+            ClientSecret = "secret",
             DisplayName = "BFF (confidential) client",
         };
 
-        // Adjust RedirectUris to your BFF callback endpoint. Default used here:
-        descriptor.RedirectUris.Add(new Uri("https://localhost:5002/signin-oidc"));
+        // Redirect URI used by the BFF callback handler after the auth code is issued.
+        descriptor.RedirectUris.Add(new Uri("http://bff.dummy.localhost/signin-oidc"));
+        descriptor.PostLogoutRedirectUris.Add(new Uri("http://bff.dummy.localhost/signout-callback-oidc"));
 
         // Permissions required for the authorization code + PKCE flow and refresh tokens
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Authorization);
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Token);
+        descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.EndSession);
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode);
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.ResponseTypes.Code);
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.GrantTypes.RefreshToken);
-        descriptor.Permissions.Add(OpenIddictConstants.Scopes.Email);
-        descriptor.Permissions.Add(OpenIddictConstants.Scopes.Profile);
-        descriptor.Permissions.Add(OpenIddictConstants.Scopes.OfflineAccess);
-        descriptor.Permissions.Add(OpenIddictConstants.Scopes.OpenId);
+        // Scope permissions: openid is auto-allowed; profile and offline_access must be explicit.
+        descriptor.Permissions.Add(OpenIddictConstants.Permissions.Scopes.Email);
+        descriptor.Permissions.Add(OpenIddictConstants.Permissions.Scopes.Profile);
+        descriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + OpenIddictConstants.Scopes.OfflineAccess);
 
         manager.CreateAsync(descriptor).GetAwaiter().GetResult();
 
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Seed");
-        logger.LogInformation("Created OpenIddict client {ClientId} with secret: {Secret}", clientId, secret);
+        logger.LogInformation("Created OpenIddict client {ClientId}", clientId);
+    }
+
+    // Seed test user: test@test.com / !test123
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    const string testEmail = "test@test.com";
+    const string testPassword = "!test123";
+    var testUser = userManager.FindByEmailAsync(testEmail).GetAwaiter().GetResult();
+    if (testUser == null)
+    {
+        testUser = new ApplicationUser
+        {
+            UserName = testEmail,
+            Email = testEmail,
+            EmailConfirmed = true
+        };
+        var createResult = userManager.CreateAsync(testUser, testPassword).GetAwaiter().GetResult();
+        if (!createResult.Succeeded)
+        {
+            var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+            throw new InvalidOperationException($"Failed to seed test user: {errors}");
+        }
+
+        var seedLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Seed");
+        seedLogger.LogInformation("Seeded test user {Email}", testEmail);
+    }
+
+    // Seed a client credentials client for backend-to-backend authentication
+    var storageClientId = "storage-client";
+    var existingStorageClient = manager.FindByClientIdAsync(storageClientId).GetAwaiter().GetResult();
+    if (existingStorageClient == null)
+    {
+        var storageDescriptor = new OpenIddict.Abstractions.OpenIddictApplicationDescriptor
+        {
+            ClientId = storageClientId,
+            ClientSecret = "storage-secret",
+            DisplayName = "Storage service client",
+        };
+
+        storageDescriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Token);
+        storageDescriptor.Permissions.Add(OpenIddictConstants.Permissions.GrantTypes.ClientCredentials);
+        storageDescriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + "storage.read");
+        storageDescriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + "storage.write");
+
+        manager.CreateAsync(storageDescriptor).GetAwaiter().GetResult();
+
+        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Seed");
+        logger.LogInformation("Created OpenIddict client {ClientId} with secret: {Secret}", storageClientId, "storage-secret");
     }
 }
 
@@ -151,6 +217,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
