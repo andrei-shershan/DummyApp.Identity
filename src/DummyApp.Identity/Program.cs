@@ -1,5 +1,6 @@
 using DummyApp.Identity.Data;
 using DummyApp.Identity.Models;
+using Microsoft.AspNetCore.HttpOverrides;
 using DummyApp.Identity.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -51,7 +52,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.Name = "bff.cookie";
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // Allow HTTP in dev
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.LoginPath = "/account/login";
 });
 
@@ -72,7 +73,7 @@ builder.Services.AddOpenIddict()
         options.SetAuthorizationEndpointUris("/connect/authorize");
         options.SetTokenEndpointUris("/connect/token");
         options.SetEndSessionEndpointUris("/connect/logout");
-        options.SetIssuer(new Uri("http://identity.dummy.localhost"));
+        options.SetIssuer(new Uri("https://identity.dummy.localhost"));
 
         // Authorization Code flow with PKCE (recommended for SPAs)
         options.AllowAuthorizationCodeFlow()
@@ -105,8 +106,7 @@ builder.Services.AddOpenIddict()
         options.UseAspNetCore()
                .EnableAuthorizationEndpointPassthrough()
                .EnableTokenEndpointPassthrough()
-               .EnableEndSessionEndpointPassthrough()
-               .DisableTransportSecurityRequirement(); // TODO: Remove in production
+               .EnableEndSessionEndpointPassthrough();
     })
     .AddValidation(options =>
     {
@@ -140,8 +140,8 @@ using (var scope = app.Services.CreateScope())
         };
 
         // Redirect URI used by the BFF callback handler after the auth code is issued.
-        descriptor.RedirectUris.Add(new Uri("http://bff.dummy.localhost/signin-oidc"));
-        descriptor.PostLogoutRedirectUris.Add(new Uri("http://bff.dummy.localhost/signout-callback-oidc"));
+        descriptor.RedirectUris.Add(new Uri("https://bff.dummy.localhost/signin-oidc"));
+        descriptor.PostLogoutRedirectUris.Add(new Uri("https://bff.dummy.localhost/signout-callback-oidc"));
 
         // Permissions required for the authorization code + PKCE flow and refresh tokens
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Authorization);
@@ -215,6 +215,18 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+var forwardedOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+if (builder.Configuration.GetValue<bool>("ReverseProxy:TrustAllProxies"))
+{
+    // Dev only: trust all proxies inside the Docker network (Traefik).
+    // Do NOT enable in production.
+    forwardedOptions.KnownNetworks.Clear();
+    forwardedOptions.KnownProxies.Clear();
+}
+app.UseForwardedHeaders(forwardedOptions);
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
