@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/DummyApp.Identity/DummyApp.Identity.csproj" Id="3acde7d1-f1dc-427a-b4ad-40383a763f4b" />
+    <Project Path="src/DummyApp.Identity.Migrations/DummyApp.Identity.Migrations.csproj" Id="b9daea2a-d8b9-48f4-a03a-f1d8fdf1a8b8" />
   </Folder>
 </Solution>
