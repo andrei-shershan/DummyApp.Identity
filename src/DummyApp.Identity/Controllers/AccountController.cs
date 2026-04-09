@@ -1,5 +1,4 @@
 using DummyApp.Identity.Models;
-using DummyApp.Identity.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -13,18 +12,15 @@ public class AccountController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
-    private readonly ITokenStore _tokenStore;
     private readonly IConfiguration _configuration;
 
     public AccountController(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        ITokenStore tokenStore,
         IConfiguration configuration)
     {
         _userManager = userManager;
         _signInManager = signInManager;
-        _tokenStore = tokenStore;
         _configuration = configuration;
     }
 
@@ -72,12 +68,6 @@ public class AccountController : ControllerBase
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user != null)
-        {
-            await _tokenStore.RemoveAsync(user.Id);
-        }
-
         await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
         return Ok();
     }

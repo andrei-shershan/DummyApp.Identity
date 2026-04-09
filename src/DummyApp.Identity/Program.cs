@@ -1,7 +1,6 @@
 using DummyApp.Identity.Data;
 using DummyApp.Identity.Models;
 using Microsoft.AspNetCore.HttpOverrides;
-using DummyApp.Identity.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -27,10 +26,25 @@ var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 builder.Services.AddSingleton(signingKey);
 builder.Services.AddSingleton(new JwtSettings(jwtIssuer, jwtAudience));
 
-// DbContext - InMemory for development. Swap to UseSqlServer later.
+var databaseSection = builder.Configuration.GetSection("Database");
+var useInMemoryDb = databaseSection.GetValue<bool?>("UseInMemory") ?? true;
+var connectionString = databaseSection.GetValue<string>("ConnectionString");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    options.UseInMemoryDatabase("DevDb");
+    if (useInMemoryDb)
+    {
+        options.UseInMemoryDatabase("DevDb");
+    }
+    else
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("Database connection string is required when Database:UseInMemory is false.");
+        }
+
+        options.UseMySQL(connectionString);
+    }
 
     // Register the entity sets needed by OpenIddict.
     options.UseOpenIddict();
@@ -55,10 +69,6 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.LoginPath = "/account/login";
 });
-
-// In-memory token store
-builder.Services.AddMemoryCache();
-builder.Services.AddSingleton<ITokenStore, InMemoryTokenStore>();
 
 // OpenIddict configuration
 builder.Services.AddOpenIddict()
@@ -94,6 +104,9 @@ builder.Services.AddOpenIddict()
             "storage.read",
             "storage.write");
 
+        // Register the audiences so OpenIddict allows them in tokens.
+        options.RegisterAudiences("DummyApp.StorageService");
+
         // JWT access tokens are the default in this OpenIddict version.
         // UseReferenceAccessTokens() would be needed for opaque reference tokens.
 
@@ -123,7 +136,37 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    // Step 1: Wait until the DB is reachable.
+    // Retry ONLY on connection errors — not on migration or seeding errors.
+    if (db.Database.IsRelational())
+    {
+        var retries = 10;
+        while (true)
+        {
+            try
+            {
+                db.Database.OpenConnection();
+                db.Database.CloseConnection();
+                break;
+            }
+            catch (Exception ex) when (retries-- > 0)
+            {
+                startupLogger.LogWarning(ex, "Database not ready, retrying in 5 s ({Retries} attempts left)", retries);
+                System.Threading.Thread.Sleep(TimeSpan.FromSeconds(5));
+            }
+        }
+
+        // Step 2: Apply pending migrations exactly once.
+        // Database.Migrate() is idempotent: it checks __EFMigrationsHistory
+        // and skips already-applied migrations. Safe to call on every restart.
+        db.Database.Migrate();
+    }
+    else
+    {
+        db.Database.EnsureCreated();
+    }
 
     // Seed a confidential BFF client (confidential client performs server-side code exchange).
     var manager = scope.ServiceProvider.GetRequiredService<OpenIddict.Abstractions.IOpenIddictApplicationManager>();

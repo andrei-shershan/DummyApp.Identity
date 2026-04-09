@@ -115,17 +115,23 @@ namespace DummyApp.Identity.Controllers
                     _ => new[] { Destinations.AccessToken }
                 });
 
-                return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+                var principal = new ClaimsPrincipal(identity);
+                var scopes = request.GetScopes();
+                if (scopes.Contains("storage.read") || scopes.Contains("storage.write"))
+                {
+                    principal.SetAudiences("DummyApp.StorageService");
+                }
+
+                return SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
             }
 
             // ── Client Credentials (backend-to-backend) ─────────────────────────
             if (request.IsClientCredentialsGrantType())
             {
+                var clientId = request.ClientId ?? throw new InvalidOperationException("Client ID is missing.");
                 var identity = new ClaimsIdentity(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
-                identity.AddClaim(Claims.Subject,
-                    request.ClientId ?? throw new InvalidOperationException("Client ID is missing."),
-                    Destinations.AccessToken);
+                identity.AddClaim(Claims.Subject, clientId, Destinations.AccessToken);
 
                 var scopes = request.GetScopes();
                 foreach (var scope in scopes)
@@ -135,6 +141,10 @@ namespace DummyApp.Identity.Controllers
 
                 var principal = new ClaimsPrincipal(identity);
                 principal.SetScopes(scopes);
+                if (scopes.Contains("storage.read") || scopes.Contains("storage.write"))
+                {
+                    principal.SetAudiences("DummyApp.StorageService");
+                }
 
                 return SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
             }
