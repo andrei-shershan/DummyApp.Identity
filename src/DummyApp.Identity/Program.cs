@@ -8,6 +8,8 @@ using OpenIddict.Abstractions;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+// Read OpenId settings from configuration
+var openIdSection = builder.Configuration.GetSection("OpenId");
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -83,7 +85,8 @@ builder.Services.AddOpenIddict()
         options.SetAuthorizationEndpointUris("/connect/authorize");
         options.SetTokenEndpointUris("/connect/token");
         options.SetEndSessionEndpointUris("/connect/logout");
-        options.SetIssuer(new Uri("https://identity.dummy.localhost"));
+        var issuer = openIdSection.GetValue<string>("Issuer") ?? "https://identity.dummy.localhost";
+        options.SetIssuer(new Uri(issuer));
 
         // Authorization Code flow with PKCE (recommended for SPAs)
         options.AllowAuthorizationCodeFlow()
@@ -105,7 +108,8 @@ builder.Services.AddOpenIddict()
             "storage.write");
 
         // Register the audiences so OpenIddict allows them in tokens.
-        options.RegisterAudiences("DummyApp.StorageService");
+        var audiences = openIdSection.GetSection("Audiences").Get<string[]>() ?? new[] { "DummyApp.StorageService" };
+        options.RegisterAudiences(audiences);
 
         // JWT access tokens are the default in this OpenIddict version.
         // UseReferenceAccessTokens() would be needed for opaque reference tokens.
@@ -170,21 +174,24 @@ using (var scope = app.Services.CreateScope())
 
     // Seed a confidential BFF client (confidential client performs server-side code exchange).
     var manager = scope.ServiceProvider.GetRequiredService<OpenIddict.Abstractions.IOpenIddictApplicationManager>();
-    var clientId = "bff-client";
+    var bffSection = app.Configuration.GetSection("OpenId:Clients:Bff");
+    var clientId = bffSection.GetValue<string>("ClientId") ?? "bff-client";
     var existing = manager.FindByClientIdAsync(clientId).GetAwaiter().GetResult();
     if (existing == null)
     {
-        // Hardcoded secret for dev. Matches BFF appsettings.json "ClientSecret": "secret".
+        var clientSecret = bffSection.GetValue<string>("ClientSecret") ?? "secret";
+        var redirectUris = bffSection.GetSection("RedirectUris").Get<string[]>() ?? new[] { "https://bff.dummy.localhost/signin-oidc" };
+        var postLogoutUris = bffSection.GetSection("PostLogoutRedirectUris").Get<string[]>() ?? new[] { "https://bff.dummy.localhost/signout-callback-oidc" };
+
         var descriptor = new OpenIddict.Abstractions.OpenIddictApplicationDescriptor
         {
             ClientId = clientId,
-            ClientSecret = "secret",
+            ClientSecret = clientSecret,
             DisplayName = "BFF (confidential) client",
         };
 
-        // Redirect URI used by the BFF callback handler after the auth code is issued.
-        descriptor.RedirectUris.Add(new Uri("https://bff.dummy.localhost/signin-oidc"));
-        descriptor.PostLogoutRedirectUris.Add(new Uri("https://bff.dummy.localhost/signout-callback-oidc"));
+        foreach (var u in redirectUris) descriptor.RedirectUris.Add(new Uri(u));
+        foreach (var u in postLogoutUris) descriptor.PostLogoutRedirectUris.Add(new Uri(u));
 
         // Permissions required for the authorization code + PKCE flow and refresh tokens
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Authorization);
@@ -193,7 +200,6 @@ using (var scope = app.Services.CreateScope())
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode);
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.ResponseTypes.Code);
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.GrantTypes.RefreshToken);
-        // Scope permissions: openid is auto-allowed; profile and offline_access must be explicit.
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.Scopes.Email);
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.Scopes.Profile);
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + OpenIddictConstants.Scopes.OfflineAccess);
@@ -229,15 +235,19 @@ using (var scope = app.Services.CreateScope())
     }
 
     // Seed a client credentials client for backend-to-backend authentication
-    var storageClientId = "storage-client";
+    var storageSection = app.Configuration.GetSection("OpenId:Clients:Storage");
+    var storageClientId = storageSection.GetValue<string>("ClientId") ?? "storage-client";
     var existingStorageClient = manager.FindByClientIdAsync(storageClientId).GetAwaiter().GetResult();
     if (existingStorageClient == null)
     {
+        var storageSecret = storageSection.GetValue<string>("ClientSecret") ?? "storage-secret";
+        var storageDisplayName = storageSection.GetValue<string>("DisplayName") ?? "Storage service client";
+
         var storageDescriptor = new OpenIddict.Abstractions.OpenIddictApplicationDescriptor
         {
             ClientId = storageClientId,
-            ClientSecret = "storage-secret",
-            DisplayName = "Storage service client",
+            ClientSecret = storageSecret,
+            DisplayName = storageDisplayName,
         };
 
         storageDescriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Token);
@@ -248,7 +258,7 @@ using (var scope = app.Services.CreateScope())
         manager.CreateAsync(storageDescriptor).GetAwaiter().GetResult();
 
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Seed");
-        logger.LogInformation("Created OpenIddict client {ClientId} with secret: {Secret}", storageClientId, "storage-secret");
+        logger.LogInformation("Created OpenIddict client {ClientId} with secret: {Secret}", storageClientId, storageSecret);
     }
 }
 
