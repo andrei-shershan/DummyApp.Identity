@@ -116,7 +116,20 @@ builder.Services.AddOpenIddict()
 
         // Register an encryption key for OpenIddict itself, but do not encrypt access tokens.
         options.AddEphemeralEncryptionKey();
-        options.AddDevelopmentSigningCertificate();
+
+        // AddDevelopmentSigningCertificate tries to persist a cert to the X509 store.
+        // On Azure Web App (Linux) the /home mount is shared and may be owned by a different
+        // user, causing a CryptographicException. Use it only in Development; fall back to an
+        // ephemeral (in-memory) key in all other environments.
+        if (builder.Environment.IsDevelopment())
+        {
+            options.AddDevelopmentSigningCertificate();
+        }
+        else
+        {
+            options.AddEphemeralSigningKey();
+        }
+
         options.DisableAccessTokenEncryption();
 
         // Register the ASP.NET Core host and enable endpoint passthrough to allow custom controller handling
