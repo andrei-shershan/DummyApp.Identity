@@ -179,9 +179,10 @@ using (var scope = app.Services.CreateScope())
     var existing = manager.FindByClientIdAsync(clientId).GetAwaiter().GetResult();
     if (existing == null)
     {
-        var clientSecret = bffSection.GetValue<string>("ClientSecret") ?? "secret";
-        var redirectUris = bffSection.GetSection("RedirectUris").Get<string[]>() ?? new[] { "https://bff.dummy.localhost/signin-oidc" };
-        var postLogoutUris = bffSection.GetSection("PostLogoutRedirectUris").Get<string[]>() ?? new[] { "https://bff.dummy.localhost/signout-callback-oidc" };
+        // TODO: refactror this
+        var clientSecret = bffSection.GetValue<string>("ClientSecret");
+        var redirectUri = bffSection.GetValue<string>("RedirectUris");
+        var postLogoutUri = bffSection.GetValue<string>("PostLogoutRedirectUris");
 
         var descriptor = new OpenIddict.Abstractions.OpenIddictApplicationDescriptor
         {
@@ -190,8 +191,8 @@ using (var scope = app.Services.CreateScope())
             DisplayName = "BFF (confidential) client",
         };
 
-        foreach (var u in redirectUris) descriptor.RedirectUris.Add(new Uri(u));
-        foreach (var u in postLogoutUris) descriptor.PostLogoutRedirectUris.Add(new Uri(u));
+        descriptor.RedirectUris.Add(new Uri(redirectUri));
+        descriptor.PostLogoutRedirectUris.Add(new Uri(postLogoutUri));
 
         // Permissions required for the authorization code + PKCE flow and refresh tokens
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Authorization);
