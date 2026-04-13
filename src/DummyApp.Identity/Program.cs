@@ -277,6 +277,8 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
+// Temporary: enable Developer Exception Page in all environments
+app.UseDeveloperExceptionPage();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
