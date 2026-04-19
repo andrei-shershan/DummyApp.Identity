@@ -1,3 +1,4 @@
+using Azure.Identity;
 using DummyApp.Identity.Data;
 using DummyApp.Identity.Models;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -8,6 +9,17 @@ using OpenIddict.Abstractions;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Key Vault: add in stg/prod only; local dev uses appsettings.Development.json
+if (!builder.Environment.IsDevelopment())
+{
+    var keyVaultUrl = builder.Configuration["KeyVault:Url"];
+    if (!string.IsNullOrEmpty(keyVaultUrl))
+    {
+        builder.Configuration.AddAzureKeyVault(new Uri(keyVaultUrl), new DefaultAzureCredential());
+    }
+}
+
 // Read OpenId settings from configuration
 var openIdSection = builder.Configuration.GetSection("OpenId");
 
