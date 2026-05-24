@@ -1,9 +1,11 @@
 using Azure.Identity;
 using DummyApp.Identity.Data;
 using DummyApp.Identity.Models;
+using DummyApp.Identity.Services;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using System.Text;
@@ -159,6 +161,9 @@ builder.Services.AddOpenIddict()
 // Authorization
 builder.Services.AddAuthorization();
 
+builder.Services.Configure<FeatureFlags>(builder.Configuration.GetSection("FeatureFlags"));
+builder.Services.AddScoped<IIdentitySeedService, IdentitySeedService>();
+
 var app = builder.Build();
 
 // Ensure database is created (InMemory) and seed OpenIddict client if needed
@@ -195,6 +200,19 @@ using (var scope = app.Services.CreateScope())
     else
     {
         db.Database.EnsureCreated();
+    }
+
+    var seedService = scope.ServiceProvider.GetRequiredService<IIdentitySeedService>();
+    var featureFlags = scope.ServiceProvider.GetRequiredService<IOptions<FeatureFlags>>().Value;
+
+    if (featureFlags.DefaultRolesSeed)
+    {
+        seedService.SeedRolesAsync().GetAwaiter().GetResult();
+    }
+
+    if (featureFlags.DefaultUsersSeed)
+    {
+        seedService.SeedUsersAsync().GetAwaiter().GetResult();
     }
 
     // Seed a confidential BFF client (confidential client performs server-side code exchange).
@@ -234,30 +252,6 @@ using (var scope = app.Services.CreateScope())
 
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Seed");
         logger.LogInformation("Created OpenIddict client {ClientId}", clientId);
-    }
-
-    // Seed test user: test@test.com / !test123
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-    const string testEmail = "test@test.com";
-    const string testPassword = "!test123";
-    var testUser = userManager.FindByEmailAsync(testEmail).GetAwaiter().GetResult();
-    if (testUser == null)
-    {
-        testUser = new ApplicationUser
-        {
-            UserName = testEmail,
-            Email = testEmail,
-            EmailConfirmed = true
-        };
-        var createResult = userManager.CreateAsync(testUser, testPassword).GetAwaiter().GetResult();
-        if (!createResult.Succeeded)
-        {
-            var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
-            throw new InvalidOperationException($"Failed to seed test user: {errors}");
-        }
-
-        var seedLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Seed");
-        seedLogger.LogInformation("Seeded test user {Email}", testEmail);
     }
 
     // Seed a client credentials client for backend-to-backend authentication
