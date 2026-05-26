@@ -15,6 +15,8 @@ public sealed record DefaultUserSeed
     public string Email { get; init; } = string.Empty;
     public string Password { get; init; } = string.Empty;
     public string Role { get; init; } = string.Empty;
+    public string FirstName { get; init; } = string.Empty;
+    public string LastName { get; init; } = string.Empty;
 }
 
 public interface IIdentitySeedService
@@ -29,7 +31,8 @@ public sealed class IdentitySeedService : IIdentitySeedService
     {
         RoleNames.Admin,
         RoleNames.Moderator,
-        RoleNames.User
+        RoleNames.Customer,
+        RoleNames.Creator
     };
 
     private readonly RoleManager<IdentityRole> _roleManager;
@@ -100,7 +103,9 @@ public sealed class IdentitySeedService : IIdentitySeedService
                 {
                     UserName = email,
                     Email = email,
-                    EmailConfirmed = true
+                    EmailConfirmed = true,
+                    FirstName = userSeed.FirstName,
+                    LastName = userSeed.LastName
                 };
 
                 var createResult = await _userManager.CreateAsync(user, userSeed.Password);
@@ -111,6 +116,33 @@ public sealed class IdentitySeedService : IIdentitySeedService
                 }
 
                 _logger.LogInformation("Created default user {Email}", email);
+            }
+            else
+            {
+                var shouldUpdate = false;
+                if (!string.Equals(user.FirstName, userSeed.FirstName, StringComparison.Ordinal))
+                {
+                    user.FirstName = userSeed.FirstName;
+                    shouldUpdate = true;
+                }
+
+                if (!string.Equals(user.LastName, userSeed.LastName, StringComparison.Ordinal))
+                {
+                    user.LastName = userSeed.LastName;
+                    shouldUpdate = true;
+                }
+
+                if (shouldUpdate)
+                {
+                    var updateResult = await _userManager.UpdateAsync(user);
+                    if (!updateResult.Succeeded)
+                    {
+                        _logger.LogError("Failed to update default user profile for {Email}: {Errors}", email, string.Join(", ", updateResult.Errors.Select(e => e.Description)));
+                        continue;
+                    }
+
+                    _logger.LogInformation("Updated default user profile for {Email}", email);
+                }
             }
 
             if (!await _roleManager.RoleExistsAsync(userSeed.Role))

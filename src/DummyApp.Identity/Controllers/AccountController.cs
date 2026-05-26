@@ -24,13 +24,19 @@ public class AccountController : ControllerBase
         _configuration = configuration;
     }
 
-    public record RegisterRequest(string Email, string Password, string? ReturnUrl = null);
+    public record RegisterRequest(string Email, string Password, string FirstName, string LastName, string? ReturnUrl = null);
     public record LoginRequest(string Email, string Password, bool RememberMe = false, string? ReturnUrl = null);
 
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest model)
     {
-        var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
+        var user = new ApplicationUser
+        {
+            UserName = model.Email,
+            Email = model.Email,
+            FirstName = model.FirstName,
+            LastName = model.LastName
+        };
         var result = await _userManager.CreateAsync(user, model.Password);
         if (!result.Succeeded)
         {
