@@ -22,5 +22,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreToken")
             .Property<string>("Subject")
             .HasMaxLength(300);
+
+        builder.Entity<ApplicationUser>(builder =>
+        {
+            builder.Property(u => u.FirstName)
+                .HasMaxLength(256);
+
+            builder.Property(u => u.LastName)
+                .HasMaxLength(256);
+        });
     }
 }

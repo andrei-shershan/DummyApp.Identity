@@ -4,5 +4,6 @@ using Microsoft.AspNetCore.Identity;
 
 public class ApplicationUser : IdentityUser
 {
-    // Extend with additional profile properties later
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
 }
