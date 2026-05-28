@@ -23,7 +23,7 @@ if (!builder.Environment.IsDevelopment())
 }
 
 // Read OpenId settings from configuration
-var openIdSection = builder.Configuration.GetSection("OpenId");
+var openIdSection = builder.Configuration.GetSection("IdentityServer");
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -42,7 +42,7 @@ var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 builder.Services.AddSingleton(signingKey);
 builder.Services.AddSingleton(new JwtSettings(jwtIssuer, jwtAudience));
 
-var databaseSection = builder.Configuration.GetSection("Database");
+var databaseSection = builder.Configuration.GetSection("Infrastructure:Databases:Identity");
 var useInMemoryDb = databaseSection.GetValue<bool?>("UseInMemory") ?? true;
 var connectionString = databaseSection.GetValue<string>("ConnectionString");
 
@@ -99,7 +99,7 @@ builder.Services.AddOpenIddict()
         options.SetAuthorizationEndpointUris("/connect/authorize");
         options.SetTokenEndpointUris("/connect/token");
         options.SetEndSessionEndpointUris("/connect/logout");
-        var issuer = openIdSection.GetValue<string>("Issuer") ?? "https://identity.dummy.localhost";
+        var issuer = openIdSection.GetValue<string>("Authority") ?? "https://identity.dummy.localhost";
         options.SetIssuer(new Uri(issuer));
 
         // Authorization Code flow with PKCE (recommended for SPAs)
@@ -122,7 +122,7 @@ builder.Services.AddOpenIddict()
             "storage.write");
 
         // Register the audiences so OpenIddict allows them in tokens.
-        var audiences = openIdSection.GetSection("Audiences").Get<string[]>() ?? new[] { "DummyApp.StorageService" };
+        var audiences = openIdSection.GetSection("Audiences").Get<string[]>() ?? ["DummyApp.StorageService"];
         options.RegisterAudiences(audiences);
 
         // JWT access tokens are the default in this OpenIddict version.
@@ -217,15 +217,15 @@ using (var scope = app.Services.CreateScope())
 
     // Seed a confidential BFF client (confidential client performs server-side code exchange).
     var manager = scope.ServiceProvider.GetRequiredService<OpenIddict.Abstractions.IOpenIddictApplicationManager>();
-    var bffSection = app.Configuration.GetSection("OpenId:Clients:Bff");
+    var bffSection = app.Configuration.GetSection("IdentityServer:OidcClients:BFF");
     var clientId = bffSection.GetValue<string>("ClientId") ?? "bff-client";
     var existing = manager.FindByClientIdAsync(clientId).GetAwaiter().GetResult();
     if (existing == null)
     {
         // TODO: refactror this
         var clientSecret = bffSection.GetValue<string>("ClientSecret");
-        var redirectUri = bffSection.GetValue<string>("RedirectUris");
-        var postLogoutUri = bffSection.GetValue<string>("PostLogoutRedirectUris");
+        var redirectUri = bffSection.GetValue<string>("RedirectUri");
+        var postLogoutUri = bffSection.GetValue<string>("PostLogoutRedirectUri");
 
         var descriptor = new OpenIddict.Abstractions.OpenIddictApplicationDescriptor
         {
@@ -255,7 +255,7 @@ using (var scope = app.Services.CreateScope())
     }
 
     // Seed a client credentials client for backend-to-backend authentication
-    var storageSection = app.Configuration.GetSection("OpenId:Clients:Storage");
+    var storageSection = app.Configuration.GetSection("IdentityServer:OidcClients:ApiGateway");
     var storageClientId = storageSection.GetValue<string>("ClientId") ?? "storage-client";
     var existingStorageClient = manager.FindByClientIdAsync(storageClientId).GetAwaiter().GetResult();
     if (existingStorageClient == null)

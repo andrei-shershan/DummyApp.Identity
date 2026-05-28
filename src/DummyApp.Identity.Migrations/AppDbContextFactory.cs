@@ -18,7 +18,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             .AddEnvironmentVariables()
             .Build();
 
-        var databaseSection = configuration.GetSection("Database");
+        var databaseSection = configuration.GetSection("Infrastructure:Databases:Identity");
         var useInMemoryDb = databaseSection.GetValue<bool?>("UseInMemory") ?? true;
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
 
@@ -31,7 +31,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             var connectionString = databaseSection.GetValue<string>("ConnectionString");
             if (string.IsNullOrWhiteSpace(connectionString))
             {
-                throw new InvalidOperationException("Database connection string is required when Database:UseInMemory is false.");
+                throw new InvalidOperationException("Database connection string is required when Infrastructure:Databases:Identity:UseInMemory is false.");
             }
 
             optionsBuilder.UseMySQL(connectionString);
