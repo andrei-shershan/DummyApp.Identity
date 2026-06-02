@@ -18,7 +18,12 @@ if (!builder.Environment.IsDevelopment())
     var keyVaultUrl = builder.Configuration["KeyVault:Url"];
     if (!string.IsNullOrEmpty(keyVaultUrl))
     {
-        builder.Configuration.AddAzureKeyVault(new Uri(keyVaultUrl), new DefaultAzureCredential());
+        var clientId = Environment.GetEnvironmentVariable("AZURE_CLIENT_ID");
+        var credential = string.IsNullOrEmpty(clientId)
+            ? new ManagedIdentityCredential()
+            : new ManagedIdentityCredential(clientId);
+
+        builder.Configuration.AddAzureKeyVault(new Uri(keyVaultUrl), credential);
     }
 }
 
