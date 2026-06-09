@@ -61,13 +61,19 @@ namespace DummyApp.Identity.Controllers
                     .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
                     .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user) ?? user.Email);
 
+            var roles = await _userManager.GetRolesAsync(user);
+            foreach (var role in roles)
+            {
+                identity.AddClaim(Claims.Role, role);
+            }
+
             identity.SetScopes(request.GetScopes());
 
             // Emit email + name in both access and identity tokens so the BFF
             // (and ApiGateway) can read user info without calling UserInfo endpoint.
             identity.SetDestinations(claim => claim.Type switch
             {
-                Claims.Name or Claims.Email or Claims.Subject
+                Claims.Name or Claims.Email or Claims.Subject or Claims.Role
                     => new[] { Destinations.AccessToken, Destinations.IdentityToken },
                 _ => new[] { Destinations.AccessToken }
             });
@@ -110,7 +116,7 @@ namespace DummyApp.Identity.Controllers
 
                 identity.SetDestinations(claim => claim.Type switch
                 {
-                    Claims.Name or Claims.Email or Claims.Subject
+                    Claims.Name or Claims.Email or Claims.Subject or Claims.Role
                         => new[] { Destinations.AccessToken, Destinations.IdentityToken },
                     _ => new[] { Destinations.AccessToken }
                 });
