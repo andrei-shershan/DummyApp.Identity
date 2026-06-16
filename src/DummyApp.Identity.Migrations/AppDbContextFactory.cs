@@ -2,9 +2,6 @@ using DummyApp.Identity.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
-using OpenIddict.EntityFrameworkCore;
-using System.IO;
-
 namespace DummyApp.Identity.Migrations;
 
 public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
@@ -18,8 +15,8 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             .AddEnvironmentVariables()
             .Build();
 
-        var databaseSection = configuration.GetSection("Infrastructure:Databases:Identity");
-        var useInMemoryDb = databaseSection.GetValue<bool?>("UseInMemory") ?? true;
+        var databaseSection = configuration.GetSection($"{nameof(AppSettings.Infrastructure)}:{nameof(InfrastructureOptions.Databases)}:{nameof(DatabasesOptions.Identity)}");
+        var useInMemoryDb = databaseSection.GetValue<bool?>(nameof(IdentityDatabaseOptions.UseInMemory)) ?? true;
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
 
         if (useInMemoryDb)
@@ -28,7 +25,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         }
         else
         {
-            var connectionString = databaseSection.GetValue<string>("ConnectionString");
+            var connectionString = databaseSection.GetValue<string>(nameof(IdentityDatabaseOptions.ConnectionString));
             if (string.IsNullOrWhiteSpace(connectionString))
             {
                 throw new InvalidOperationException("Database connection string is required when Infrastructure:Databases:Identity:UseInMemory is false.");
