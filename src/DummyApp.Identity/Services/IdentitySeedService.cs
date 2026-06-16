@@ -1,23 +1,10 @@
+using DummyApp.Identity.Configuration;
 using DummyApp.Identity.Constants;
 using DummyApp.Identity.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 
 namespace DummyApp.Identity.Services;
-
-public sealed record FeatureFlags
-{
-    public bool DefaultRolesSeed { get; init; }
-    public bool DefaultUsersSeed { get; init; }
-}
-
-public sealed record DefaultUserSeed
-{
-    public string Email { get; init; } = string.Empty;
-    public string Password { get; init; } = string.Empty;
-    public string Role { get; init; } = string.Empty;
-    public string FirstName { get; init; } = string.Empty;
-    public string LastName { get; init; } = string.Empty;
-}
 
 public interface IIdentitySeedService
 {
@@ -37,18 +24,18 @@ public sealed class IdentitySeedService : IIdentitySeedService
 
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IConfiguration _configuration;
+    private readonly AppSettings _appSettings;
     private readonly ILogger<IdentitySeedService> _logger;
 
     public IdentitySeedService(
         RoleManager<IdentityRole> roleManager,
         UserManager<ApplicationUser> userManager,
-        IConfiguration configuration,
+        IOptions<AppSettings> appSettings,
         ILogger<IdentitySeedService> logger)
     {
         _roleManager = roleManager;
         _userManager = userManager;
-        _configuration = configuration;
+        _appSettings = appSettings.Value;
         _logger = logger;
     }
 
@@ -78,7 +65,7 @@ public sealed class IdentitySeedService : IIdentitySeedService
     {
         _logger.LogInformation("Default user seeding started.");
 
-        var defaultUsers = _configuration.GetSection("DefaultUsers").Get<List<DefaultUserSeed>>() ?? new List<DefaultUserSeed>();
+        var defaultUsers = _appSettings.DefaultUsers;
         if (!defaultUsers.Any())
         {
             _logger.LogInformation("DefaultUsers section is empty; no users to seed.");
