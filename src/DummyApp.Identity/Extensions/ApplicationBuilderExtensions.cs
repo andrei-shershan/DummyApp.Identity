@@ -76,8 +76,8 @@ public static class ApplicationBuilderExtensions
                 }
                 catch (Exception ex) when (retries-- > 0)
                 {
-                    logger.LogWarning(ex, "Database not ready, retrying in 5 s ({Retries} attempts left)", retries);
-                    Thread.Sleep(TimeSpan.FromSeconds(5));
+                    logger.LogWarning(ex, "Database not ready, retrying in 10 s ({Retries} attempts left)", retries);
+                    Thread.Sleep(TimeSpan.FromSeconds(10));
                 }
             }
 
