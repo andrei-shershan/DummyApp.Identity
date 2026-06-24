@@ -155,6 +155,21 @@ public sealed class IdentitySeedService : IIdentitySeedService
 
                 _logger.LogInformation("Added default user {Email} to role {RoleName}", email, userSeed.Role);
             }
+
+            if (user?.Email?.ToLower().StartsWith("admin", StringComparison.CurrentCultureIgnoreCase) == true)
+            {
+                if (!await _userManager.IsInRoleAsync(user, "Creator"))
+                {
+                    var addToRoleResult = await _userManager.AddToRoleAsync(user, "Creator");
+                    if (!addToRoleResult.Succeeded)
+                    {
+                        _logger.LogError("Failed to add user {Email} to role Creator: {Errors}", email, string.Join(", ", addToRoleResult.Errors.Select(e => e.Description)));
+                        continue;
+                    }
+
+                    _logger.LogInformation("Added default user {Email} to role Creator", email);
+                }
+            }
         }
     }
 }
