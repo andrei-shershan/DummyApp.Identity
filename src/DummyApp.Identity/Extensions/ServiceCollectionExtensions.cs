@@ -137,7 +137,8 @@ public static class ServiceCollectionExtensions
                     OpenIddictConstants.Scopes.OfflineAccess,
                     OpenIddictConstants.Scopes.OpenId,
                     "storage.read",
-                    "storage.write");
+                    "storage.write",
+                    "identity.admin");
 
                 options.RegisterAudiences(audiences);
                 options.AddEphemeralEncryptionKey();

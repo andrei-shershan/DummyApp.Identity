@@ -38,6 +38,7 @@ public static class ApplicationBuilderExtensions
             descriptor.Permissions.Add(OpenIddictConstants.Permissions.GrantTypes.ClientCredentials);
             descriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + "storage.read");
             descriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + "storage.write");
+            descriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + "identity.admin");
         });
 
         return app;
@@ -99,16 +100,15 @@ public static class ApplicationBuilderExtensions
         Action<OpenIddictApplicationDescriptor>? addPermissions = null)
     {
         var clientId = string.IsNullOrWhiteSpace(clientOptions.ClientId) ? defaultClientId : clientOptions.ClientId;
-        var existing = manager.FindByClientIdAsync(clientId).GetAwaiter().GetResult();
-        if (existing != null)
-        {
-            return;
-        }
 
+        var resolvedSecret = string.IsNullOrWhiteSpace(clientOptions.ClientSecret) ? defaultClientSecret : clientOptions.ClientSecret;
         var descriptor = new OpenIddictApplicationDescriptor
         {
             ClientId = clientId,
-            ClientSecret = string.IsNullOrWhiteSpace(clientOptions.ClientSecret) ? defaultClientSecret : clientOptions.ClientSecret,
+            ClientSecret = resolvedSecret,
+            ClientType = string.IsNullOrWhiteSpace(resolvedSecret)
+                ? OpenIddictConstants.ClientTypes.Public
+                : OpenIddictConstants.ClientTypes.Confidential,
             DisplayName = defaultDisplayName,
         };
 
@@ -137,7 +137,16 @@ public static class ApplicationBuilderExtensions
             descriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + OpenIddictConstants.Scopes.OfflineAccess);
         }
 
-        manager.CreateAsync(descriptor).GetAwaiter().GetResult();
-        logger.LogInformation("Created OpenIddict client {ClientId}", clientId);
+        var existing = manager.FindByClientIdAsync(clientId).GetAwaiter().GetResult();
+        if (existing is null)
+        {
+            manager.CreateAsync(descriptor).GetAwaiter().GetResult();
+            logger.LogInformation("Created OpenIddict client {ClientId}", clientId);
+        }
+        else
+        {
+            manager.UpdateAsync(existing, descriptor).GetAwaiter().GetResult();
+            logger.LogInformation("Updated OpenIddict client {ClientId}", clientId);
+        }
     }
 }

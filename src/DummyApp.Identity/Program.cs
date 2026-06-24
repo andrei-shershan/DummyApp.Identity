@@ -1,6 +1,7 @@
 using DummyApp.Identity.Configuration;
 using DummyApp.Identity.Extensions;
 using DummyApp.Identity.Services;
+using OpenIddict.Abstractions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,16 +18,25 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOrIdentityService", policy =>
+        policy.RequireAssertion(context =>
+            context.User.IsInRole("Admin") ||
+            context.User.HasClaim(claim =>
+                claim.Type == OpenIddictConstants.Claims.Scope &&
+                claim.Value == "identity.admin")));
+});
+
 builder.Services.AddScoped<IIdentitySeedService, IdentitySeedService>();
 
 var app = builder.Build();
 
 app.InitializeDatabaseAndSeed();
 
-app.UseDeveloperExceptionPage();
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage();
     app.MapOpenApi();
 }
 
