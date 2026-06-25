@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 public class AppDbContext : IdentityDbContext<ApplicationUser>
 {
+    public DbSet<Invite> Invites { get; set; } = null!;
+
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
     {
@@ -30,6 +32,26 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
             builder.Property(u => u.LastName)
                 .HasMaxLength(256);
+        });
+
+        builder.Entity<Invite>(builder =>
+        {
+            builder.Property(i => i.Email)
+                .IsRequired()
+                .HasMaxLength(256);
+
+            builder.Property(i => i.Token)
+                .IsRequired()
+                .HasMaxLength(128);
+
+            builder.Property(i => i.CreatedAt)
+                .IsRequired();
+
+            builder.Property(i => i.ExpiresAt)
+                .IsRequired();
+
+            builder.HasIndex(i => i.Email)
+                .IsUnique();
         });
     }
 }

@@ -1,3 +1,4 @@
+using DummyApp.Identity.Configuration;
 using DummyApp.Identity.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;

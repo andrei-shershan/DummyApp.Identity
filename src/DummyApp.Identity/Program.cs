@@ -29,6 +29,7 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.AddScoped<IIdentitySeedService, IdentitySeedService>();
+builder.Services.AddScoped<IInviteService, InviteService>();
 
 var app = builder.Build();
 
