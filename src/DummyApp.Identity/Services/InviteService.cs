@@ -38,4 +38,31 @@ public sealed class InviteService : IInviteService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<Invite?> GetInviteByTokenAsync(string token, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
+        return await _dbContext.Invites.SingleOrDefaultAsync(i => i.Token == token.Trim(), cancellationToken);
+    }
+
+    public async Task RemoveInviteAsync(string token, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return;
+        }
+
+        var invite = await _dbContext.Invites.SingleOrDefaultAsync(i => i.Token == token.Trim(), cancellationToken);
+        if (invite is null)
+        {
+            return;
+        }
+
+        _dbContext.Invites.Remove(invite);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
 }
