@@ -45,6 +45,7 @@ public sealed class ServicesOptions
 {
     public ServiceOptions Identity { get; init; } = new();
     public ServiceOptions BFF { get; init; } = new();
+    public ServiceOptions Frontend { get; init; } = new();
 }
 
 public sealed class ServiceOptions

@@ -1,4 +1,5 @@
 using DummyApp.Identity.Models;
+using DummyApp.Identity.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -13,11 +14,13 @@ public sealed class AdminController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
+    private readonly IInviteService _inviteService;
 
-    public AdminController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+    public AdminController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IInviteService inviteService)
     {
         _userManager = userManager;
         _roleManager = roleManager;
+        _inviteService = inviteService;
     }
 
     [HttpGet("users")]
@@ -54,6 +57,20 @@ public sealed class AdminController : ControllerBase
 
         return Ok(await Task.FromResult(result));
     }
+
+    [HttpPost("invite")]
+    public async Task<IActionResult> Invite([FromBody] InviteRequest request)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Token))
+        {
+            return BadRequest("Email and token are required.");
+        }
+
+        await _inviteService.SaveInviteTokenAsync(request.Email.Trim(), request.Token.Trim(), CancellationToken.None);
+        return Ok();
+    }
+
+    public sealed record InviteRequest(string Email, string Token);
 
     public sealed class UserDto
     {
