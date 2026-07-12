@@ -143,7 +143,8 @@ public class AccountMvcController : Controller
         {
             UserName = model.Email.Trim(),
             Email = model.Email.Trim(),
-            EmailConfirmed = true
+            EmailConfirmed = true,
+            IsActive = true
         };
 
         var createResult = await _userManager.CreateAsync(user, model.Password);

@@ -32,6 +32,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
             builder.Property(u => u.LastName)
                 .HasMaxLength(256);
+
+            builder.Property(u => u.IsActive)
+                .IsRequired()
+                .HasDefaultValue(true);
         });
 
         builder.Entity<Invite>(builder =>

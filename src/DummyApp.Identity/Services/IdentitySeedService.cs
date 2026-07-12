@@ -92,7 +92,8 @@ public sealed class IdentitySeedService : IIdentitySeedService
                     Email = email,
                     EmailConfirmed = true,
                     FirstName = userSeed.FirstName,
-                    LastName = userSeed.LastName
+                    LastName = userSeed.LastName,
+                    IsActive = true
                 };
 
                 var createResult = await _userManager.CreateAsync(user, userSeed.Password);
