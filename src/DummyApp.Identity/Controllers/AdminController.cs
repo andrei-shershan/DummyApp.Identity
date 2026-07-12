@@ -38,7 +38,8 @@ public sealed class AdminController : ControllerBase
                 Email = user.Email ?? string.Empty,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                Roles = roles
+                Roles = roles,
+                IsActive = user.IsActive
             });
         }
 
@@ -70,6 +71,41 @@ public sealed class AdminController : ControllerBase
         return Ok();
     }
 
+    [HttpPut("users/{id}/active")]
+    public async Task<IActionResult> UpdateUserActiveState([FromRoute] string id, [FromBody] UpdateUserActiveStateRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest("Request body is required.");
+        }
+
+        var user = await _userManager.FindByIdAsync(id);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        user.IsActive = request.IsActive;
+        var updateResult = await _userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            return BadRequest(updateResult.Errors.Select(e => e.Description));
+        }
+
+        var roles = await _userManager.GetRolesAsync(user);
+        return Ok(new UserDto
+        {
+            Id = user.Id,
+            Email = user.Email ?? string.Empty,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Roles = roles,
+            IsActive = user.IsActive
+        });
+    }
+
+    public sealed record UpdateUserActiveStateRequest(bool IsActive);
+
     public sealed record InviteRequest(string Email, string Token);
 
     public sealed class UserDto
@@ -78,6 +114,7 @@ public sealed class AdminController : ControllerBase
         public string Email { get; init; } = string.Empty;
         public string FirstName { get; init; } = string.Empty;
         public string LastName { get; init; } = string.Empty;
+        public bool IsActive { get; init; } = true;
         public IEnumerable<string> Roles { get; init; } = Array.Empty<string>();
     }
 

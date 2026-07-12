@@ -35,7 +35,8 @@ public class AccountController : ControllerBase
             UserName = model.Email,
             Email = model.Email,
             FirstName = model.FirstName,
-            LastName = model.LastName
+            LastName = model.LastName,
+            IsActive = true
         };
         var result = await _userManager.CreateAsync(user, model.Password);
         if (!result.Succeeded)
