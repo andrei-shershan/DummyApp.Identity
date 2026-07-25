@@ -73,7 +73,7 @@ public class AccountMvcController : Controller
         if (string.IsNullOrWhiteSpace(token))
         {
             model.InviteValid = false;
-            ModelState.AddModelError(string.Empty, "Приглашение отсутствует или недействительно.");
+            ModelState.AddModelError(string.Empty, "Invitation is missing or invalid.");
             return View("~/Views/Account/Register.cshtml", model);
         }
 
@@ -81,14 +81,14 @@ public class AccountMvcController : Controller
         if (invite == null)
         {
             model.InviteValid = false;
-            ModelState.AddModelError(string.Empty, "Приглашение недействительно.");
+            ModelState.AddModelError(string.Empty, "Invitation is invalid.");
             return View("~/Views/Account/Register.cshtml", model);
         }
 
         if (invite.ExpiresAt < DateTime.UtcNow)
         {
             model.InviteValid = false;
-            ModelState.AddModelError(string.Empty, "Срок действия приглашения истёк.");
+            ModelState.AddModelError(string.Empty, "Invitation has expired.");
             return View("~/Views/Account/Register.cshtml", model);
         }
 
@@ -104,7 +104,7 @@ public class AccountMvcController : Controller
 
         if (string.IsNullOrWhiteSpace(model.Token))
         {
-            ModelState.AddModelError(string.Empty, "Приглашение отсутствует.");
+            ModelState.AddModelError(string.Empty, "Invitation is missing.");
             model.InviteValid = false;
             return View("~/Views/Account/Register.cshtml", model);
         }
@@ -112,21 +112,21 @@ public class AccountMvcController : Controller
         var invite = await _inviteService.GetInviteByTokenAsync(model.Token.Trim(), CancellationToken.None);
         if (invite == null)
         {
-            ModelState.AddModelError(string.Empty, "Приглашение недействительно.");
+            ModelState.AddModelError(string.Empty, "Invitation is invalid.");
             model.InviteValid = false;
             return View("~/Views/Account/Register.cshtml", model);
         }
 
         if (invite.ExpiresAt < DateTime.UtcNow)
         {
-            ModelState.AddModelError(string.Empty, "Срок действия приглашения истёк.");
+            ModelState.AddModelError(string.Empty, "Invitation has expired.");
             model.InviteValid = false;
             return View("~/Views/Account/Register.cshtml", model);
         }
 
         if (!string.Equals(invite.Email, model.Email.Trim(), StringComparison.OrdinalIgnoreCase))
         {
-            ModelState.AddModelError(string.Empty, "Email не совпадает с адресом, указанным в приглашении.");
+            ModelState.AddModelError(string.Empty, "Email does not match the invited address.");
             model.InviteValid = true;
             return View("~/Views/Account/Register.cshtml", model);
         }
@@ -134,7 +134,7 @@ public class AccountMvcController : Controller
         var existingUser = await _userManager.FindByEmailAsync(model.Email);
         if (existingUser != null)
         {
-            ModelState.AddModelError(string.Empty, "Пользователь с таким email уже существует.");
+            ModelState.AddModelError(string.Empty, "A user with this email already exists.");
             model.InviteValid = true;
             return View("~/Views/Account/Register.cshtml", model);
         }

@@ -136,8 +136,7 @@ public static class ServiceCollectionExtensions
                     OpenIddictConstants.Scopes.Profile,
                     OpenIddictConstants.Scopes.OfflineAccess,
                     OpenIddictConstants.Scopes.OpenId,
-                    "storage.read",
-                    "storage.write",
+                    "storage.scope",
                     "identity.admin");
 
                 options.RegisterAudiences(audiences);
