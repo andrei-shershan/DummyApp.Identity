@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Регистрация по приглашению</title>
+    <title>Invitation Registration</title>
     <style>
         body { font-family:Segoe UI,Arial,Helvetica,sans-serif; padding:2rem; background:#f5f5f5; }
         .form { max-width:420px; margin:2rem auto; background:#fff; padding:2rem; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.1); }
@@ -19,7 +19,7 @@
 </head>
 <body>
     <div class="form">
-        <h2>Регистрация по приглашению</h2>
+        <h2>Invitation Registration</h2>
 
         @if (!Model.InviteValid)
         {
@@ -49,15 +49,15 @@
             <input asp-for="Email" type="email" autocomplete="username" />
             <span class="error" asp-validation-for="Email"></span>
 
-            <label asp-for="Password">Пароль</label>
+            <label asp-for="Password">Password</label>
             <input asp-for="Password" type="password" autocomplete="new-password" />
             <span class="error" asp-validation-for="Password"></span>
 
-            <label asp-for="ConfirmPassword">Подтвердите пароль</label>
+            <label asp-for="ConfirmPassword">Confirm password</label>
             <input asp-for="ConfirmPassword" type="password" autocomplete="new-password" />
             <span class="error" asp-validation-for="ConfirmPassword"></span>
 
-            <button type="submit">Зарегистрироваться</button>
+            <button type="submit">Register</button>
         </form>
     </div>
 </body>

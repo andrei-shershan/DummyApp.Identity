@@ -123,7 +123,7 @@ namespace DummyApp.Identity.Controllers
 
                 var principal = new ClaimsPrincipal(identity);
                 var scopes = request.GetScopes();
-                if (scopes.Contains("storage.read") || scopes.Contains("storage.write"))
+                if (scopes.Contains("storage.scope"))
                 {
                     principal.SetAudiences("DummyApp.StorageService");
                 }
@@ -147,7 +147,7 @@ namespace DummyApp.Identity.Controllers
 
                 var principal = new ClaimsPrincipal(identity);
                 principal.SetScopes(scopes);
-                if (scopes.Contains("storage.read") || scopes.Contains("storage.write"))
+                if (scopes.Contains("storage.scope"))
                 {
                     principal.SetAudiences("DummyApp.StorageService");
                 }

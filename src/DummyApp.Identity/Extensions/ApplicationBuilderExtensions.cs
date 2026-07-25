@@ -36,8 +36,7 @@ public static class ApplicationBuilderExtensions
         {
             descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Token);
             descriptor.Permissions.Add(OpenIddictConstants.Permissions.GrantTypes.ClientCredentials);
-            descriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + "storage.read");
-            descriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + "storage.write");
+            descriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + "storage.scope");
             descriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + "identity.admin");
         });
 

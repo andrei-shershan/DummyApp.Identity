@@ -14,7 +14,7 @@ public class RegisterViewModel
 
     [Required]
     [DataType(DataType.Password)]
-    [Compare(nameof(Password), ErrorMessage = "Пароли не совпадают.")]
+    [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
     public string ConfirmPassword { get; set; } = string.Empty;
 
     public string Token { get; set; } = string.Empty;
