@@ -46,6 +46,32 @@ public sealed class AdminController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("users/{id}")]
+    public async Task<IActionResult> GetUserById([FromRoute] string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return BadRequest("User ID is required.");
+        }
+
+        var user = await _userManager.FindByIdAsync(id);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        var roles = await _userManager.GetRolesAsync(user);
+        return Ok(new UserDto
+        {
+            Id = user.Id,
+            Email = user.Email ?? string.Empty,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Roles = roles,
+            IsActive = user.IsActive
+        });
+    }
+
     [HttpGet("roles")]
     public async Task<IActionResult> GetRoles()
     {
