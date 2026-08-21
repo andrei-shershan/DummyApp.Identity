@@ -12,17 +12,17 @@ EXPOSE 8081
 
 # This stage is used to build the service project
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-ARG BUILD_CONFIGURATION=Release
+ARG BUILD_CONFIGURATION=Debug
 WORKDIR /src
 COPY ["src/DummyApp.Identity/DummyApp.Identity.csproj", "src/DummyApp.Identity/"]
 RUN dotnet restore "./src/DummyApp.Identity/DummyApp.Identity.csproj"
-COPY . .
+COPY ["src/DummyApp.Identity/", "src/DummyApp.Identity/"]
 WORKDIR "/src/src/DummyApp.Identity"
 RUN dotnet build "./DummyApp.Identity.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
 FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
+ARG BUILD_CONFIGURATION=Debug
 RUN dotnet publish "./DummyApp.Identity.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
