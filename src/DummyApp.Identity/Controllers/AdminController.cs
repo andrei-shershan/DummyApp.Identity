@@ -72,6 +72,46 @@ public sealed class AdminController : ControllerBase
         });
     }
 
+    [HttpPut("users/{id}")]
+    public async Task<IActionResult> UpdateUserProfile([FromRoute] string id, [FromBody] UpdateUserProfileRequest? request)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return BadRequest("User ID is required.");
+        }
+
+        if (request is null || string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName))
+        {
+            return BadRequest("FirstName and LastName are required.");
+        }
+
+        var user = await _userManager.FindByIdAsync(id);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        user.FirstName = request.FirstName.Trim();
+        user.LastName = request.LastName.Trim();
+
+        var updateResult = await _userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            return BadRequest(updateResult.Errors.Select(e => e.Description));
+        }
+
+        var roles = await _userManager.GetRolesAsync(user);
+        return Ok(new UserDto
+        {
+            Id = user.Id,
+            Email = user.Email ?? string.Empty,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Roles = roles,
+            IsActive = user.IsActive
+        });
+    }
+
     [HttpGet("roles")]
     public async Task<IActionResult> GetRoles()
     {
@@ -131,6 +171,8 @@ public sealed class AdminController : ControllerBase
     }
 
     public sealed record UpdateUserActiveStateRequest(bool IsActive);
+
+    public sealed record UpdateUserProfileRequest(string FirstName, string LastName);
 
     public sealed record InviteRequest(string Email, string Token);
 
