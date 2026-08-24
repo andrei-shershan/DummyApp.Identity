@@ -36,6 +36,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             builder.Property(u => u.IsActive)
                 .IsRequired()
                 .HasDefaultValue(true);
+
+            builder.Property(u => u.AvatarUrl)
+                .HasMaxLength(2048);
+
+            builder.Property(u => u.AvatarSmallUrl)
+                .HasMaxLength(2048);
         });
 
         builder.Entity<Invite>(builder =>
