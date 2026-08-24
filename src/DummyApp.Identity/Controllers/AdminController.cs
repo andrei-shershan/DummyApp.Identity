@@ -1,5 +1,7 @@
+using DummyApp.Identity.DtoModels;
 using DummyApp.Identity.Models;
 using DummyApp.Identity.Services;
+using DummyApp.Identity.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -32,15 +34,7 @@ public sealed class AdminController : ControllerBase
         foreach (var user in users)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            result.Add(new UserDto
-            {
-                Id = user.Id,
-                Email = user.Email ?? string.Empty,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Roles = roles,
-                IsActive = user.IsActive
-            });
+            result.Add(user.ToDto(roles));
         }
 
         return Ok(result);
@@ -61,15 +55,7 @@ public sealed class AdminController : ControllerBase
         }
 
         var roles = await _userManager.GetRolesAsync(user);
-        return Ok(new UserDto
-        {
-            Id = user.Id,
-            Email = user.Email ?? string.Empty,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            Roles = roles,
-            IsActive = user.IsActive
-        });
+        return Ok(user.ToDto(roles));
     }
 
     [HttpPut("users/{id}")]
@@ -101,15 +87,7 @@ public sealed class AdminController : ControllerBase
         }
 
         var roles = await _userManager.GetRolesAsync(user);
-        return Ok(new UserDto
-        {
-            Id = user.Id,
-            Email = user.Email ?? string.Empty,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            Roles = roles,
-            IsActive = user.IsActive
-        });
+        return Ok(user.ToDto(roles));
     }
 
     [HttpGet("roles")]
@@ -159,36 +137,46 @@ public sealed class AdminController : ControllerBase
         }
 
         var roles = await _userManager.GetRolesAsync(user);
-        return Ok(new UserDto
+        return Ok(user.ToDto(roles));
+    }
+
+    [HttpPut("users/{id}/avatar")]
+    public async Task<IActionResult> UpdateUserAvatar([FromRoute] string id, [FromBody] UpdateUserAvatarRequest? request)
+    {
+        if (string.IsNullOrWhiteSpace(id))
         {
-            Id = user.Id,
-            Email = user.Email ?? string.Empty,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            Roles = roles,
-            IsActive = user.IsActive
-        });
+            return BadRequest("User ID is required.");
+        }
+
+        if (request is null || string.IsNullOrWhiteSpace(request.AvatarUrl))
+        {
+            return BadRequest("AvatarUrl is required.");
+        }
+
+        var user = await _userManager.FindByIdAsync(id);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        user.AvatarUrl = request.AvatarUrl.Trim();
+        user.AvatarSmallUrl = request.AvatarSmallUrl?.Trim();
+
+        var updateResult = await _userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            return BadRequest(updateResult.Errors.Select(e => e.Description));
+        }
+
+        var roles = await _userManager.GetRolesAsync(user);
+        return Ok(user.ToDto(roles));
     }
 
     public sealed record UpdateUserActiveStateRequest(bool IsActive);
+    public sealed record UpdateUserAvatarRequest(string AvatarUrl, string? AvatarSmallUrl);
 
     public sealed record UpdateUserProfileRequest(string FirstName, string LastName);
 
     public sealed record InviteRequest(string Email, string Token);
 
-    public sealed class UserDto
-    {
-        public string Id { get; init; } = string.Empty;
-        public string Email { get; init; } = string.Empty;
-        public string FirstName { get; init; } = string.Empty;
-        public string LastName { get; init; } = string.Empty;
-        public bool IsActive { get; init; } = true;
-        public IEnumerable<string> Roles { get; init; } = Array.Empty<string>();
-    }
-
-    public sealed class RoleDto
-    {
-        public string Id { get; init; } = string.Empty;
-        public string Name { get; init; } = string.Empty;
-    }
 }
